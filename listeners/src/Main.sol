@@ -3,35 +3,44 @@ pragma solidity ^0.8.13;
 
 import "sim-idx-sol/Simidx.sol";
 import "sim-idx-generated/Generated.sol";
+import "./interfaces/IERC20.sol";
 
 contract Triggers is BaseTriggers {
     function triggers() external virtual override {
         Listener listener = new Listener();
-        addTrigger(chainContract(Chains.Ethereum, 0x1F98431c8aD98523631AE4a59f267346ea31F984), listener.triggerOnCreatePoolFunction());
-        addTrigger(chainContract(Chains.Unichain, 0x1F98400000000000000000000000000000000003), listener.triggerOnCreatePoolFunction());
-        addTrigger(chainContract(Chains.Base, 0x33128a8fC17869897dcE68Ed026d694621f6FDfD), listener.triggerOnCreatePoolFunction());
+        addTrigger(chainContract(Chains.Ethereum, 0xae78736Cd615f374D3085123A210448E74Fc6393), listener.triggerOnTransferEvent());
+        addTrigger(chainContract(Chains.Ethereum, 0xae78736Cd615f374D3085123A210448E74Fc6393), listener.triggerOnApprovalEvent());
     }
 }
 
-/// Index calls to the UniswapV3Factory.createPool function on Ethereum
-/// To hook on more function calls, specify that this listener should implement that interface and follow the compiler errors.
-contract Listener is UniswapV3Factory$OnCreatePoolFunction {
-    /// Emitted events are indexed.
-    /// To change the data which is indexed, modify the event or add more events.
-    event PoolCreated(uint64 chainId, address caller, address pool, address token0, address token1, uint24 fee);
 
-    /// The handler called whenever the UniswapV3Factory.createPool function is called.
-    /// Within here you write your indexing specific logic (e.g., call out to other contracts to get more information).
-    /// The only requirement for handlers is that they have the correct signature, but usually you will use generated interfaces to help write them.
-    function onCreatePoolFunction(
-        FunctionContext memory ctx,
-        UniswapV3Factory$CreatePoolFunctionInputs memory inputs,
-        UniswapV3Factory$CreatePoolFunctionOutputs memory outputs
+contract Listener is RocketTokenRETH$OnTransferEvent, RocketTokenRETH$OnApprovalEvent {
+    event Transfer(uint256 amount, uint64 timestamp, address from, address to);
+    event Approval(uint256 amount, uint64 timestamp, address owner, address spender);
+    event Account(address addr, uint256 balance, bool isOwner);
+    event Allowance(address owner, address spender, uint256 amount);
+
+    function onTransferEvent(
+        EventContext memory ctx,
+        RocketTokenRETH$TransferEventParams memory inputs
+    )
+        external
+        override
+    {   
+        emit Transfer(inputs.value, uint64(block.timestamp), inputs.from, inputs.to);
+        emit Account(inputs.from, IERC20(ctx.txn.call.callee).balanceOf(inputs.from), true);
+        emit Account(inputs.to, IERC20(ctx.txn.call.callee).balanceOf(inputs.to), false);
+    }
+
+    function onApprovalEvent(
+        EventContext memory ctx,
+        RocketTokenRETH$ApprovalEventParams memory inputs
     )
         external
         override
     {
-        emit PoolCreated(uint64(block.chainid), ctx.txn.call.callee, outputs.pool, inputs.tokenA, inputs.tokenB, inputs.fee);
+        emit Approval(inputs.value, uint64(block.timestamp), inputs.owner, inputs.spender);
+        emit Allowance(inputs.owner, inputs.spender, IERC20(ctx.txn.call.callee).allowance(inputs.owner, inputs.spender));
     }
 }
 
