@@ -28,8 +28,8 @@ contract Listener is RocketTokenRETH$OnTransferEvent, RocketTokenRETH$OnApproval
         override
     {   
         emit Transfer(inputs.value, uint64(block.timestamp), inputs.from, inputs.to);
-        emit Account(inputs.from, IERC20(ctx.txn.call.callee).balanceOf(inputs.from), true);
-        emit Account(inputs.to, IERC20(ctx.txn.call.callee).balanceOf(inputs.to), false);
+        emit Account(inputs.from, IERC20(ctx.txn.call.callee()).balanceOf(inputs.from), true);
+        emit Account(inputs.to, IERC20(ctx.txn.call.callee()).balanceOf(inputs.to), false);
     }
 
     function onApprovalEvent(
@@ -40,7 +40,7 @@ contract Listener is RocketTokenRETH$OnTransferEvent, RocketTokenRETH$OnApproval
         override
     {
         emit Approval(inputs.value, uint64(block.timestamp), inputs.owner, inputs.spender);
-        emit Allowance(inputs.owner, inputs.spender, IERC20(ctx.txn.call.callee).allowance(inputs.owner, inputs.spender));
+        emit Allowance(inputs.owner, inputs.spender, IERC20(ctx.txn.call.callee()).allowance(inputs.owner, inputs.spender));
     }
 }
 
